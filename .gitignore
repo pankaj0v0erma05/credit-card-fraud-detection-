@@ -1,0 +1,24 @@
+# Virtual Environment
+.venv/
+venv/
+env/
+__pycache__/
+*.pyc
+
+# IDEs and OS files
+.DS_Store
+.idea/
+.vscode/
+
+# Data Files (GitHub has a strict 100MB file limit; the raw CSV is 102MB)
+data/
+*.csv
+*.xlsx
+*.zip
+*.tar.gz
+
+# Preprocessed Numpy Slices (Large binary arrays)
+artifacts/*.npy
+
+# PDF / Temp logs
+*.log
