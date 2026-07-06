@@ -11,3 +11,5 @@ streamlit
 fastapi
 uvicorn
 reportlab
+shap
+

@@ -16,6 +16,17 @@ except ImportError:
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 STATIC_DIR = os.path.abspath(os.path.join(SCRIPT_DIR, '..', 'static'))
 
+import shap
+import matplotlib.pyplot as plt
+
+# Cache the explainer resource to avoid re-constructing it on each Streamlit rerun
+@st.cache_resource
+def get_shap_explainer(_model):
+    # TreeExplainer is extremely fast and optimized for tree models like XGBoost
+    return shap.TreeExplainer(_model)
+
+explainer = get_shap_explainer(model)
+
 def main():
     # Set page configuration for a premium dashboard look
     st.set_page_config(
@@ -327,6 +338,55 @@ def main():
                     </div>
                     """, unsafe_allow_html=True)
                     st.metric("Fraud Risk Probability", f"{prob * 100:.2f}%", delta="SECURE", delta_color="inverse")
+                
+                # -------------------------------------------------------------
+                # SHAP Explainable AI (XAI) Risk Factors Plot
+                # -------------------------------------------------------------
+                st.markdown("---")
+                st.markdown("### 🔍 Explainable AI (XAI) Risk Factor Analysis")
+                st.markdown(
+                    "This chart displays the top features driving the model's decision. "
+                    "Features in <span style='color: #ef4444; font-weight: bold;'>red (positive values)</span> push the score higher "
+                    "towards **Fraud**, while features in <span style='color: #3b82f6; font-weight: bold;'>blue (negative values)</span> pull it lower "
+                    "towards **Legitimate**.",
+                    unsafe_allow_html=True
+                )
+                
+                with st.spinner("Calculating SHAP feature contributions..."):
+                    try:
+                        # Convert input to DataFrame to match preprocessing schema
+                        df_single = pd.DataFrame([transaction_payload])
+                        X_single_processed = preprocessor.transform(df_single)
+                        
+                        # Specify columns in ColumnTransformer execution order
+                        processed_cols = ["Time", "Amount"] + [f"V{i}" for i in range(1, 29)]
+                        X_single_df = pd.DataFrame(X_single_processed, columns=processed_cols)
+                        
+                        # Compute SHAP explanation values
+                        shap_values_single = explainer(X_single_df)
+                        
+                        # Build custom styled Matplotlib Figure
+                        fig, ax = plt.subplots(figsize=(10, 4.5))
+                        fig.patch.set_facecolor('#111827')
+                        ax.set_facecolor('#111827')
+                        
+                        # Force font colors for coordinate axes
+                        ax.tick_params(colors='#e2e8f0', which='both', labelsize=9)
+                        ax.xaxis.label.set_color('#e2e8f0')
+                        
+                        # Generate the horizontal waterfall chart
+                        shap.plots.waterfall(shap_values_single[0], max_display=8, show=False)
+                        
+                        # Re-apply text color configuration to custom text blocks
+                        for text in fig.texts:
+                            text.set_color('#f1f5f9')
+                        
+                        # Render Matplotlib figure within Streamlit
+                        st.pyplot(fig, clear_figure=True)
+                        plt.close(fig)
+                        
+                    except Exception as e:
+                        st.error(f"Could not load SHAP explanations: {e}")
             st.markdown('</div>', unsafe_allow_html=True)
 
     # =========================================================================
